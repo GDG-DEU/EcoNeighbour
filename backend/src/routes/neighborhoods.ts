@@ -3,7 +3,10 @@ import { authenticate } from '../middleware/auth';
 import { listNeighborhoods, getNeighborhoodStats } from '../controllers/neighborhoods.controller';
 
 const router = Router();
-router.use(authenticate as any);
+
+// Public: needed during registration (user has no token yet)
 router.get('/', listNeighborhoods);
-router.get('/:id/stats/:month/:year', getNeighborhoodStats);
+
+// Protected: stats require authentication
+router.get('/:id/stats/:month/:year', authenticate as any, getNeighborhoodStats as any);
 export default router;
