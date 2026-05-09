@@ -14,6 +14,7 @@ import re
 from typing import Optional
 
 import httpx
+from codecarbon import EmissionsTracker
 
 import config
 from schemas.invoice import InvoiceParseResponse
@@ -26,13 +27,14 @@ Your task is to analyse the provided invoice image and extract exactly three fie
 
 Return ONLY a valid JSON object with the following keys (no markdown, no explanation):
 {
-  "consumption_value": <number or null>,
+    "consumption_value": <number (float) or null>,
   "address_data": <string or null>,
   "billing_period": <string in MM/YYYY format or null>
 }
 
 Rules:
-- consumption_value: numeric kWh (electricity) or m³ (gas) value. Omit units, return only the number.
+- consumption_value: numeric kWh (electricity) or m³ (gas) value. Omit units, return only the number as a float.
+- If the value is a whole number, still include a decimal point (e.g. 120.0).
 - address_data: the full address as printed on the invoice (street, city, postal code).
 - billing_period: format as MM/YYYY (e.g. "03/2025"). If only a year is visible, use "01/<YEAR>".
 - Use null for any field you cannot find.
@@ -103,6 +105,9 @@ async def parse_invoice(image_bytes: bytes, content_type: str) -> InvoiceParseRe
     """
     b64_image = _image_to_base64(image_bytes)
 
+    tracker = EmissionsTracker(log_level="error")
+    tracker.start()
+
     payload = {
         "model": config.OLLAMA_MODEL,
         "messages": [
@@ -127,21 +132,31 @@ async def parse_invoice(image_bytes: bytes, content_type: str) -> InvoiceParseRe
 
     logger.info("Sending invoice image to Ollama model '%s'", config.OLLAMA_MODEL)
 
-    async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:
-        try:
-            response = await client.post(
-                f"{config.OLLAMA_BASE_URL}/api/chat",
-                json=payload,
-            )
-        except httpx.ConnectError as exc:
-            raise RuntimeError(
-                f"Cannot reach Ollama at {config.OLLAMA_BASE_URL}. "
-                "Make sure 'ollama serve' is running."
-            ) from exc
+    try:
+        async with httpx.AsyncClient(timeout=config.OLLAMA_TIMEOUT) as client:
+            try:
+                response = await client.post(
+                    f"{config.OLLAMA_BASE_URL}/api/chat",
+                    json=payload,
+                )
+            except httpx.ConnectError as exc:
+                raise RuntimeError(
+                    f"Cannot reach Ollama at {config.OLLAMA_BASE_URL}. "
+                    "Make sure 'ollama serve' is running."
+                ) from exc
 
-        if response.status_code != 200:
-            raise RuntimeError(
-                f"Ollama returned HTTP {response.status_code}: {response.text}"
+            if response.status_code != 200:
+                raise RuntimeError(
+                    f"Ollama returned HTTP {response.status_code}: {response.text}"
+                )
+    finally:
+        tracker.stop()
+        emissions_data = tracker.final_emissions_data
+        if emissions_data is not None:
+            logger.info(
+                "LLM energy usage: %.6f kWh, emissions: %.6f kgCO2e",
+                emissions_data.energy_consumed,
+                emissions_data.emissions,
             )
 
     logger.info("Ollama response: %s", response)
