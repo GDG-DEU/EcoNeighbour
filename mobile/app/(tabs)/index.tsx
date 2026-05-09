@@ -1,98 +1,216 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
+import { useQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { EcoColors, EcoSpacing, EcoBorderRadius, EcoTypography } from '@/constants/theme';
+import { useTheme } from '@/hooks/useTheme';
+import { useAuthStore } from '@/stores/auth.store';
+import { getMe } from '@/services/users.api';
+import { getMyBills } from '@/services/bills.api';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { getNeighborhoodStats } from '@/services/neighborhood.api';
+import { CarbonSummaryCard } from '@/components/dashboard/carbon-summary-card';
+import { TreesSavedBanner } from '@/components/dashboard/trees-saved-banner';
+import { MonthlyComparisonChart } from '@/components/dashboard/monthly-comparison-chart';
 
-export default function HomeScreen() {
+const now = new Date();
+const MONTH = now.getMonth() + 1;
+const YEAR = now.getFullYear();
+
+export default function DashboardScreen() {
+  const theme = useTheme();
+  const styles = getStyles(theme);
+  const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
+
+  const { data, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ['dashboard', MONTH, YEAR],
+    queryFn: async () => {
+      const [me, bills] = await Promise.all([
+        getMe(),
+        getMyBills(),
+      ]);
+
+      let neighborhoodAvg = 0;
+      if (me.neighborhoodId) {
+        try {
+          const stats = await getNeighborhoodStats(me.neighborhoodId, MONTH, YEAR);
+          neighborhoodAvg = stats.avgCo2Kg;
+        } catch {}
+      }
+
+      // Bu ayın onaylı faturaları
+      const thisMonthBills = bills.filter(
+        (b) => b.month === MONTH && b.year === YEAR && b.isConfirmed
+      );
+      const totalCo2 = thisMonthBills.reduce((s, b) => s + b.co2Kg, 0);
+      const totalTrees = thisMonthBills.reduce((s, b) => s + (b.treesSaved ?? 0), 0);
+
+      // Son 6 ay grafik verisi
+      const last6: { month: number; year: number; co2Kg: number; neighborhoodAvg: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(YEAR, MONTH - 1 - i);
+        const m = d.getMonth() + 1;
+        const y = d.getFullYear();
+        const monthBills = bills.filter((b) => b.month === m && b.year === y && b.isConfirmed);
+        last6.push({ month: m, year: y, co2Kg: monthBills.reduce((s, b) => s + b.co2Kg, 0), neighborhoodAvg });
+      }
+
+      return { me, totalCo2, totalTrees, neighborhoodAvg, chartData: last6 };
+    },
+    enabled: !!user,
+  });
+
+  const firstName = (data?.me.name ?? user?.name ?? 'Kullanıcı').split(' ')[0];
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+    <ScrollView
+      style={[styles.root, { paddingTop: insets.top }]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefetching}
+          onRefresh={refetch}
+          tintColor={EcoColors.primary}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+      }
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.greeting}>Merhaba, {firstName} 👋</Text>
+          <Text style={styles.subGreeting}>
+            {data?.me.neighborhood?.name ?? 'Mahallenin'} karbon takibi
+          </Text>
+        </View>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{firstName.charAt(0).toUpperCase()}</Text>
+        </View>
+      </View>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {/* İçerik */}
+      {isLoading ? (
+        <View style={styles.loadingWrap}>
+          <ActivityIndicator color={EcoColors.primary} size="large" />
+        </View>
+      ) : data && (data.totalCo2 > 0 || data.neighborhoodAvg > 0) ? (
+        <>
+          <CarbonSummaryCard
+            co2Kg={data.totalCo2}
+            neighborhoodAvgCo2={data.neighborhoodAvg}
+            month={MONTH}
+            year={YEAR}
+          />
+          <TreesSavedBanner
+            treesSavedThisMonth={data.totalTrees}
+            totalTreesSaved={data.me.totalTreesSaved}
+          />
+          <MonthlyComparisonChart data={data.chartData} />
+        </>
+      ) : (
+        <View style={styles.emptyWrap}>
+          <Ionicons name="leaf-outline" size={60} color={theme.muted} />
+          <Text style={styles.emptyTitle}>Henüz fatura yüklemediniz</Text>
+          <Text style={styles.emptySub}>İlk faturanı yükle, karbon takibine başla!</Text>
+        </View>
+      )}
+
+      {/* Fatura Yükle CTA */}
+      <TouchableOpacity
+        style={styles.ctaBtn}
+        onPress={() => router.push('/bill/camera')}
+        activeOpacity={0.85}
+      >
+        <Ionicons name="camera-outline" size={20} color="#fff" style={{ marginRight: EcoSpacing.sm }} />
+        <Text style={styles.ctaBtnText}>Fatura Yükle</Text>
+      </TouchableOpacity>
+    </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
+const getStyles = (theme: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: theme.bg },
+  content: { paddingBottom: EcoSpacing.xxl },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    paddingHorizontal: EcoSpacing.lg,
+    paddingVertical: EcoSpacing.lg,
+    marginBottom: EcoSpacing.sm,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  greeting: {
+    fontSize: EcoTypography.sizes.xl,
+    fontWeight: EcoTypography.weights.bold,
+    color: theme.text,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  subGreeting: {
+    fontSize: EcoTypography.sizes.sm,
+    color: theme.muted,
+    marginTop: 2,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: EcoBorderRadius.full,
+    backgroundColor: EcoColors.alpha.primary20,
+    borderWidth: 2,
+    borderColor: EcoColors.alpha.primary30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: EcoTypography.sizes.md,
+    fontWeight: EcoTypography.weights.bold,
+    color: EcoColors.primary,
+  },
+  loadingWrap: {
+    alignItems: 'center',
+    paddingVertical: EcoSpacing.xxl,
+  },
+  emptyWrap: {
+    alignItems: 'center',
+    paddingHorizontal: EcoSpacing.xl,
+    paddingVertical: EcoSpacing.xxl,
+    marginHorizontal: EcoSpacing.lg,
+  },
+  emptyTitle: {
+    fontSize: EcoTypography.sizes.lg,
+    fontWeight: EcoTypography.weights.semibold,
+    color: theme.text,
+    marginTop: EcoSpacing.md,
+    marginBottom: EcoSpacing.sm,
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: EcoTypography.sizes.sm,
+    color: theme.muted,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  ctaBtn: {
+    marginHorizontal: EcoSpacing.lg,
+    marginTop: EcoSpacing.md,
+    height: 50,
+    borderRadius: EcoBorderRadius.sm,
+    backgroundColor: EcoColors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaBtnText: {
+    color: '#fff',
+    fontSize: EcoTypography.sizes.md,
+    fontWeight: EcoTypography.weights.bold,
   },
 });

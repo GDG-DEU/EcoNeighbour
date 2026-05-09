@@ -12,6 +12,7 @@ model User {
   passwordHash   String
   name           String
   avatarUrl      String?
+  address        String?
   pushToken      String?
   neighborhoodId String?
   createdAt      DateTime  @default(now())
