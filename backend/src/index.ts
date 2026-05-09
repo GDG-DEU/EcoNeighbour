@@ -1,6 +1,7 @@
 import 'dotenv/config';
-import express from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
@@ -15,10 +16,12 @@ import notificationRoutes from './routes/notifications';
 export const prisma = new PrismaClient();
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
 app.use(express.json());
 
-app.use('/api/v1/auth', authRoutes);
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+
+app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/bills', billRoutes);
 app.use('/api/v1/neighborhoods', neighborhoodRoutes);
@@ -170,6 +173,11 @@ cron.schedule('0 0 1 * *', async () => {
   }
 
   console.log('[CRON] Leaderboard reset complete');
+});
+
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 const PORT = parseInt(process.env.PORT || '5000', 10);
