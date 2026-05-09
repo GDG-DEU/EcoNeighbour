@@ -22,6 +22,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { getMe } from "@/services/users.api";
 import { getMyBills } from "@/services/bills.api";
 import { logout as apiLogout } from "@/services/auth.api";
+import { AnimatedNumber, FadeInSlide, SkeletonGroup } from "@/animations";
 import { BillHistoryList } from "@/components/profile/bill-history-list";
 
 export default function ProfileScreen() {
@@ -86,10 +87,15 @@ export default function ProfileScreen() {
         )}
 
         {/* Toplam Ağaç */}
-        <View style={styles.treesBadge}>
-          <Text style={styles.treesValue}>{totalTrees.toFixed(0)}</Text>
+        <FadeInSlide direction="up" distance={20} delay={100} duration={500} style={styles.treesBadge}>
+          <AnimatedNumber
+            value={totalTrees}
+            decimals={0}
+            duration={800}
+            style={styles.treesValue}
+          />
           <Text style={styles.treesLabel}>🌳 Toplam ağaç</Text>
-        </View>
+        </FadeInSlide>
       </View>
 
       {/* Fatura Geçmişi */}
@@ -98,10 +104,9 @@ export default function ProfileScreen() {
       </View>
 
       {billsQ.isLoading ? (
-        <ActivityIndicator
-          color={EcoColors.primary}
-          style={{ marginTop: EcoSpacing.xl }}
-        />
+        <View style={styles.section}>
+          <SkeletonGroup lines={4} style={styles.skeleton} />
+        </View>
       ) : (
         <BillHistoryList bills={billsQ.data ?? []} />
       )}

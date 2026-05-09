@@ -19,6 +19,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { login } from '@/services/auth.api';
 import { useAuthStore } from '@/stores/auth.store';
 import { registerForPushNotifications } from '@/services/notifications';
+import { AnimatedButton, ErrorShake, FadeInSlide } from '@/animations';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -27,14 +28,19 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [shouldShake, setShouldShake] = useState(false);
 
   const { login: storeLogin } = useAuthStore();
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Eksik bilgi', 'E-posta ve şifre alanlarını doldurun.');
+      setError('E-posta ve şifre alanlarını doldurun.');
+      setShouldShake(true);
+      setTimeout(() => setShouldShake(false), 300);
       return;
     }
+    setError('');
     setIsLoading(true);
     try {
       const { accessToken, refreshToken, user } = await login(email.trim(), password);
@@ -44,7 +50,9 @@ export default function LoginScreen() {
       router.replace('/(tabs)');
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? 'Giriş yapılamadı. Bilgilerinizi kontrol edin.';
-      Alert.alert('Hata', msg);
+      setError(msg);
+      setShouldShake(true);
+      setTimeout(() => setShouldShake(false), 300);
     } finally {
       setIsLoading(false);
     }
@@ -57,7 +65,7 @@ export default function LoginScreen() {
     >
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Logo & Başlık */}
-        <View style={styles.hero}>
+        <FadeInSlide direction="down" distance={40} duration={600} style={styles.hero}>
           <View style={styles.logoWrap}>
             <Image
               source={require('@/assets/images/logo/ecoNeighbour-transparent.png')}
@@ -67,10 +75,10 @@ export default function LoginScreen() {
           </View>
           <Text style={styles.appName}>EcoNeighbour</Text>
           <Text style={styles.tagline}>Karbon takibini başlat</Text>
-        </View>
+        </FadeInSlide>
 
         {/* Form */}
-        <View style={styles.form}>
+        <ErrorShake trigger={shouldShake} intensity={8} style={styles.form}>
           <Text style={styles.label}>E-posta</Text>
           <View style={styles.inputWrap}>
             <Ionicons name="mail-outline" size={18} color={theme.muted} style={styles.inputIcon} />
@@ -108,11 +116,10 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={[styles.loginBtn, isLoading && styles.loginBtnDisabled]}
+          <AnimatedButton
             onPress={handleLogin}
             disabled={isLoading}
-            activeOpacity={0.85}
+            style={[styles.loginBtn, isLoading && styles.loginBtnDisabled]}
           >
             {isLoading ? (
               <ActivityIndicator color="#fff" />
@@ -122,18 +129,24 @@ export default function LoginScreen() {
                 <Text style={styles.loginBtnText}>Giriş Yap</Text>
               </>
             )}
-          </TouchableOpacity>
-        </View>
+          </AnimatedButton>
+
+          {error ? (
+            <FadeInSlide direction="up" distance={10} duration={300} style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error}</Text>
+            </FadeInSlide>
+          ) : null}
+        </ErrorShake>
 
         {/* Kayıt Linki */}
-        <View style={styles.footer}>
+        <FadeInSlide direction="up" distance={20} delay={300} duration={500} style={styles.footer}>
           <Text style={styles.footerText}>Hesabın yok mu? </Text>
           <Link href="/(auth)/register" asChild>
             <TouchableOpacity>
               <Text style={styles.footerLink}>Kayıt Ol</Text>
             </TouchableOpacity>
           </Link>
-        </View>
+        </FadeInSlide>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -228,6 +241,19 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: '#fff',
     fontSize: EcoTypography.sizes.md,
     fontWeight: EcoTypography.weights.bold,
+  },
+  errorContainer: {
+    marginTop: EcoSpacing.md,
+    padding: EcoSpacing.sm,
+    backgroundColor: '#fee2e2',
+    borderRadius: EcoBorderRadius.sm,
+    borderLeftWidth: 4,
+    borderLeftColor: '#dc2626',
+  },
+  errorText: {
+    color: '#dc2626',
+    fontSize: EcoTypography.sizes.sm,
+    fontWeight: EcoTypography.weights.semibold,
   },
   footer: {
     flexDirection: 'row',

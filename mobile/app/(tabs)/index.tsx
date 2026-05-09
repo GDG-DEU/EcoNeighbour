@@ -16,7 +16,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth.store';
 import { getMe } from '@/services/users.api';
 import { getMyBills } from '@/services/bills.api';
-
+import { AnimatedNumber, SkeletonGroup, FadeInSlide } from '@/animations';
 import { getNeighborhoodStats } from '@/services/neighborhood.api';
 import { CarbonSummaryCard } from '@/components/dashboard/carbon-summary-card';
 import { TreesSavedBanner } from '@/components/dashboard/trees-saved-banner';
@@ -101,21 +101,27 @@ export default function DashboardScreen() {
       {/* İçerik */}
       {isLoading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator color={EcoColors.primary} size="large" />
+          <SkeletonGroup lines={4} style={styles.skeleton} />
         </View>
       ) : data && (data.totalCo2 > 0 || data.neighborhoodAvg > 0) ? (
         <>
-          <CarbonSummaryCard
-            co2Kg={data.totalCo2}
-            neighborhoodAvgCo2={data.neighborhoodAvg}
-            month={MONTH}
-            year={YEAR}
-          />
-          <TreesSavedBanner
-            treesSavedThisMonth={data.totalTrees}
-            totalTreesSaved={data.me.totalTreesSaved}
-          />
-          <MonthlyComparisonChart data={data.chartData} />
+          <FadeInSlide direction="up" distance={20} delay={0} duration={500}>
+            <CarbonSummaryCard
+              co2Kg={data.totalCo2}
+              neighborhoodAvgCo2={data.neighborhoodAvg}
+              month={MONTH}
+              year={YEAR}
+            />
+          </FadeInSlide>
+          <FadeInSlide direction="up" distance={20} delay={100} duration={500}>
+            <TreesSavedBanner
+              treesSavedThisMonth={data.totalTrees}
+              totalTreesSaved={data.me.totalTreesSaved}
+            />
+          </FadeInSlide>
+          <FadeInSlide direction="up" distance={20} delay={200} duration={500}>
+            <MonthlyComparisonChart data={data.chartData} />
+          </FadeInSlide>
         </>
       ) : (
         <View style={styles.emptyWrap}>

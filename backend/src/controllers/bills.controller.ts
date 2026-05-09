@@ -16,14 +16,9 @@ function co2ToTrees(co2Saved: number): number {
 const pendingExtractions = new Map<string, { data: ExtractedBill; expiresAt: number }>();
 
 interface ExtractedBill {
-  bill_type: 'ELECTRICITY' | 'GAS';
-  address: string;
-  subscriber_number: string;
-  period_start: string;
-  period_end: string;
-  usage: number;
-  usage_unit: string;
-  confidence: number;
+  consumption_value: number | null;
+  address_data: string | null;
+  billing_period: string | null; // MM/YYYY format
 }
 
 function generateTempId(): string {
@@ -36,34 +31,54 @@ export async function uploadBill(req: AuthRequest, res: Response): Promise<void>
     return;
   }
 
-  const base64 = req.file.buffer.toString('base64');
-  const mimeType = req.file.mimetype;
-
   try {
+    // AI Service gerçek bir dosya yüklemesi (multipart/form-data) bekliyor
+    const formData = new FormData();
+    const blob = new Blob([new Uint8Array(req.file.buffer)], { type: req.file.mimetype });
+    formData.append('file', blob, req.file.originalname);
+
     const aiResponse = await axios.post<ExtractedBill>(
-      `${process.env.AI_SERVICE_URL}/extract-bill`,
-      { image: base64, mime_type: mimeType },
+      `${process.env.AI_SERVICE_URL}/api/v1/invoice/parse`,
+      formData,
       {
-        headers: { 'X-Internal-Key': process.env.AI_SERVICE_SECRET },
-        timeout: 30000,
+        headers: { 
+          'Content-Type': 'multipart/form-data'
+          // Not: AI Service şu an auth kontrolü yapmıyor ama gerekirse eklenebilir
+        },
+        timeout: 60000, // AI analizi uzun sürebilir
       }
     );
 
+    const data = aiResponse.data;
+
+    // AI'dan gelen "MM/YYYY" formatını backend'in beklediği period_start/end formatına çevirelim
+    let periodStart = '';
+    let periodEnd = '';
+    if (data.billing_period && data.billing_period.includes('/')) {
+      const [month, year] = data.billing_period.split('/');
+      periodStart = `${year}-${month}-01`;
+      periodEnd = `${year}-${month}-28`; // Basit bir varsayım
+    }
+
+    // Backend'in beklediği yapıya map ediyoruz
+    const mappedData = {
+      bill_type: 'ELECTRICITY', // Varsayılan, kullanıcı sonra değiştirebilir
+      address: data.address_data || '',
+      subscriber_number: '', // AI şu an bunu çıkarmıyor
+      period_start: periodStart,
+      period_end: periodEnd,
+      usage: data.consumption_value || 0,
+      usage_unit: 'kWh',
+      confidence: 1.0
+    };
+
     const tempId = generateTempId();
-    pendingExtractions.set(tempId, { data: aiResponse.data, expiresAt: Date.now() + 10 * 60 * 1000 });
+    pendingExtractions.set(tempId, { data: mappedData as any, expiresAt: Date.now() + 10 * 60 * 1000 });
 
-    for (const [key, val] of pendingExtractions.entries()) {
-      if (val.expiresAt < Date.now()) pendingExtractions.delete(key);
-    }
-
-    res.json({ tempId, extractedData: aiResponse.data });
+    res.json({ tempId, extractedData: mappedData });
   } catch (err: unknown) {
-    if (axios.isAxiosError(err) && err.response?.status === 422) {
-      res.status(422).json(err.response.data);
-      return;
-    }
-    console.error('AI service error:', err);
-    res.status(502).json({ error: 'AI service unavailable. Please try again.' });
+    console.error('AI service error details:', axios.isAxiosError(err) ? err.response?.data : err);
+    res.status(502).json({ error: 'AI servisi faturayı okuyamadı. Lütfen tekrar deneyin veya bilgileri el ile girin.' });
   }
 }
 
