@@ -19,6 +19,8 @@ interface ExtractedBill {
   consumption_value: number | null;
   address_data: string | null;
   billing_period: string | null; // MM/YYYY format
+  energy_kwh: number | null;
+  emissions_kgco2e: number | null;
 }
 
 function generateTempId(): string {
@@ -62,12 +64,13 @@ export async function uploadBill(req: AuthRequest, res: Response): Promise<void>
 
     // Backend'in beklediği yapıya map ediyoruz
     const mappedData = {
-      bill_type: 'ELECTRICITY', // Varsayılan, kullanıcı sonra değiştirebilir
-      address: data.address_data || '',
-      subscriber_number: '', // AI şu an bunu çıkarmıyor
+      bill_type: 'ELECTRICITY',
+      address: data?.address_data || '',
+      subscriber_number: 'N/A',
       period_start: periodStart,
       period_end: periodEnd,
-      usage: data.consumption_value || 0,
+      usage: data?.energy_kwh || data?.consumption_value || 0,
+      co2Kg: data?.emissions_kgco2e || 0, // AI'dan gelen salınım verisi
       usage_unit: 'kWh',
       confidence: 1.0
     };
