@@ -4,6 +4,7 @@ import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import axios from 'axios';
 
 import authRoutes from './routes/auth';
@@ -12,12 +13,23 @@ import billRoutes from './routes/bills';
 import neighborhoodRoutes from './routes/neighborhoods';
 import leaderboardRoutes from './routes/leaderboard';
 import notificationRoutes from './routes/notifications';
+import { setupSwagger } from './swagger';
 
-export const prisma = new PrismaClient();
+const adapter = new PrismaMariaDb({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '3306', 10),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASS || '',
+  database: process.env.DB_NAME || 'econeighbour_db',
+});
+
+export const prisma = new PrismaClient({ adapter } as any);
 
 const app = express();
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
 app.use(express.json());
+
+setupSwagger(app);
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
 
