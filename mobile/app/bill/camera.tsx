@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
   Image,
+  ScrollView,
 } from 'react-native';
 import { useState, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -124,65 +125,107 @@ export default function CameraScreen() {
           <View style={{ width: 44 }} />
         </View>
 
-        {/* Animated Preview Container */}
-        <FadeInSlide 
-          direction="down" 
-          distance={60} 
-          duration={500} 
-          style={styles.animatedPreviewWrapper}
+        <ScrollView
+          style={styles.previewScroll}
+          contentContainerStyle={[
+            styles.previewScrollContent,
+            { paddingBottom: insets.bottom + EcoSpacing.md },
+          ]}
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.previewCardContainer}>
-            {/* Image Container with Border */}
-            <View style={styles.imageWrapper}>
-              <Image 
-                source={{ uri: capturedUri }} 
-                style={styles.billImage}
-              />
-              
-              {/* Glossy Overlay */}
-              <View style={styles.glossyOverlay} />
-              
-              {/* Corner Badges */}
-              <View style={[styles.cornerBadge, styles.cornerBadgeTL]}>
-                <Ionicons name="checkmark-circle" size={28} color="#22c55e" />
+          {/* Animated Preview Container */}
+          <FadeInSlide 
+            direction="down" 
+            distance={60} 
+            duration={500} 
+            style={styles.animatedPreviewWrapper}
+          >
+            <View style={styles.previewCardContainer}>
+              {/* Image Container with Border */}
+              <View style={styles.imageWrapper}>
+                <Image 
+                  source={{ uri: capturedUri }} 
+                  style={styles.billImage}
+                />
+                
+                {/* Glossy Overlay */}
+                <View style={styles.glossyOverlay} />
+                
+                {/* Corner Badges */}
+                <View style={[styles.cornerBadge, styles.cornerBadgeTL]}>
+                  <Ionicons name="checkmark-circle" size={28} color="#22c55e" />
+                </View>
+                <View style={[styles.cornerBadge, styles.cornerBadgeTR]}>
+                  <Text style={styles.qualityBadge}>HD</Text>
+                </View>
               </View>
-              <View style={[styles.cornerBadge, styles.cornerBadgeTR]}>
-                <Text style={styles.qualityBadge}>HD</Text>
+
+              {/* Info Card Below Image */}
+              <View style={styles.infoCard}>
+                <View style={styles.infoRow}>
+                  <View style={styles.infoBadge}>
+                    <Ionicons name="document-outline" size={16} color={EcoColors.primary} />
+                    <Text style={styles.infoBadgeText}>Fatura Tespit Edildi</Text>
+                  </View>
+                </View>
+                
+                <Text style={styles.infoLabel}>Kontrol Edin</Text>
+                <Text style={styles.infoDescription}>
+                  Faturanın tamamı göze çarptığından ve metinler net göründüğünden emin olun.
+                </Text>
+
+                {/* Checklist */}
+                <View style={styles.checklistContainer}>
+                  <View style={styles.checklistItem}>
+                    <Ionicons name="checkmark" size={16} color="#22c55e" />
+                    <Text style={styles.checklistText}>Fatura tamamen görünüyor</Text>
+                  </View>
+                  <View style={styles.checklistItem}>
+                    <Ionicons name="checkmark" size={16} color="#22c55e" />
+                    <Text style={styles.checklistText}>Metinler net ve okunabilir</Text>
+                  </View>
+                  <View style={styles.checklistItem}>
+                    <Ionicons name="checkmark" size={16} color="#22c55e" />
+                    <Text style={styles.checklistText}>Aydınlatma yeterli</Text>
+                  </View>
+                </View>
               </View>
             </View>
+          </FadeInSlide>
 
-            {/* Info Card Below Image */}
-            <View style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoBadge}>
-                  <Ionicons name="document-outline" size={16} color={EcoColors.primary} />
-                  <Text style={styles.infoBadgeText}>Fatura Tespit Edildi</Text>
+          {/* Action Buttons */}
+          {!isUploading && !uploadSuccess && (
+            <FadeInSlide 
+              direction="up" 
+              distance={60} 
+              duration={500} 
+              delay={200}
+              style={styles.previewActions}
+            >
+              <AnimatedButton
+                onPress={() => setCapturedUri(null)}
+                disabled={isUploading}
+                style={styles.retakeBtn}
+              >
+                <View style={styles.retakeBtnContent}>
+                  <Ionicons name="refresh" size={22} color={EcoColors.primary} />
+                  <Text style={styles.retakeBtnText}>Tekrar Çek</Text>
                 </View>
-              </View>
-              
-              <Text style={styles.infoLabel}>Kontrol Edin</Text>
-              <Text style={styles.infoDescription}>
-                Faturanın tamamı göze çarptığından ve metinler net göründüğünden emin olun.
-              </Text>
+              </AnimatedButton>
 
-              {/* Checklist */}
-              <View style={styles.checklistContainer}>
-                <View style={styles.checklistItem}>
-                  <Ionicons name="checkmark" size={16} color="#22c55e" />
-                  <Text style={styles.checklistText}>Fatura tamamen görünüyor</Text>
+              <AnimatedButton
+                onPress={handleUpload}
+                disabled={isUploading}
+                style={styles.useBtn}
+              >
+                <View style={styles.useBtnContent}>
+                  <Ionicons name="rocket" size={22} color="#fff" />
+                  <Text style={styles.useBtnText}>Analiz Et</Text>
                 </View>
-                <View style={styles.checklistItem}>
-                  <Ionicons name="checkmark" size={16} color="#22c55e" />
-                  <Text style={styles.checklistText}>Metinler net ve okunabilir</Text>
-                </View>
-                <View style={styles.checklistItem}>
-                  <Ionicons name="checkmark" size={16} color="#22c55e" />
-                  <Text style={styles.checklistText}>Aydınlatma yeterli</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </FadeInSlide>
+              </AnimatedButton>
+            </FadeInSlide>
+          )}
+        </ScrollView>
 
         {/* Upload Progress or Success Overlay */}
         {isUploading || uploadSuccess ? (
@@ -219,38 +262,6 @@ export default function CameraScreen() {
           </View>
         ) : null}
 
-        {/* Action Buttons */}
-        {!isUploading && !uploadSuccess && (
-          <FadeInSlide 
-            direction="up" 
-            distance={60} 
-            duration={500} 
-            delay={200}
-            style={[styles.previewActions, { paddingBottom: insets.bottom + EcoSpacing.md }]}
-          >
-            <AnimatedButton
-              onPress={() => setCapturedUri(null)}
-              disabled={isUploading}
-              style={styles.retakeBtn}
-            >
-              <View style={styles.retakeBtnContent}>
-                <Ionicons name="refresh" size={22} color={EcoColors.primary} />
-                <Text style={styles.retakeBtnText}>Tekrar Çek</Text>
-              </View>
-            </AnimatedButton>
-
-            <AnimatedButton
-              onPress={handleUpload}
-              disabled={isUploading}
-              style={styles.useBtn}
-            >
-              <View style={styles.useBtnContent}>
-                <Ionicons name="rocket" size={22} color="#fff" />
-                <Text style={styles.useBtnText}>Analiz Et</Text>
-              </View>
-            </AnimatedButton>
-          </FadeInSlide>
-        )}
       </View>
     );
   }
@@ -458,10 +469,15 @@ const getStyles = (theme: any) => StyleSheet.create({
     fontSize: EcoTypography.sizes.lg,
     fontWeight: EcoTypography.weights.bold,
   },
-  animatedPreviewWrapper: {
+  previewScroll: {
     flex: 1,
-    justifyContent: 'flex-start',
-    paddingVertical: EcoSpacing.xl,
+  },
+  previewScrollContent: {
+    paddingTop: EcoSpacing.lg,
+  },
+  animatedPreviewWrapper: {
+    justifyContent: 'center',
+    paddingBottom: EcoSpacing.lg,
   },
   previewCardContainer: {
     marginHorizontal: EcoSpacing.lg,
@@ -634,21 +650,5 @@ const getStyles = (theme: any) => StyleSheet.create({
     color: '#fff',
     fontSize: EcoTypography.sizes.base,
     fontWeight: EcoTypography.weights.semibold,
-  },
-  uploadStateContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-  },
-  uploadStateContent: {
-    alignItems: 'center',
-    gap: EcoSpacing.md,
-  },
-  uploadStateText: {
-    color: '#fff',
-    fontSize: EcoTypography.sizes.md,
-    fontWeight: EcoTypography.weights.semibold,
-    marginTop: EcoSpacing.md,
   },
 });
