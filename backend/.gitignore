@@ -1,0 +1,31 @@
+# Bağımlılıklar (En önemlisi, binlerce dosya içerir ve repoda olmamalıdır)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Hassas Bilgiler (Veritabanı şifrelerin, API keylerin burada durur)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE ve Editör Ayarları
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistem Dosyaları
+.DS_Store
+Thumbs.db
+
+# Build Çıktıları (Eğer TypeScript veya frontend build kullanıyorsan)
+dist/
+build/
+out/
+
+# Loglar
+logs
+*.log
