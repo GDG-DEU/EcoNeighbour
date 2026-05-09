@@ -18,11 +18,11 @@ model User {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  neighborhood      Neighborhood?       @relation(fields: [neighborhoodId], references: [id])
-  bills             Bill[]
+  neighborhood       Neighborhood?        @relation(fields: [neighborhoodId], references: [id])
+  bills              Bill[]
   leaderboardEntries MonthlyLeaderboard[]
-  notificationLogs  NotificationLog[]
-  refreshTokens     RefreshToken[]
+  notificationLogs   NotificationLog[]
+  refreshTokens      RefreshToken[]
 }
 
 model Neighborhood {
@@ -39,7 +39,7 @@ model Neighborhood {
 }
 
 model Bill {
-  id               String      @id @default(cuid())
+  id               String   @id @default(cuid())
   userId           String
   type             BillType
   rawImageUrl      String?
@@ -52,9 +52,9 @@ model Bill {
   treesSaved       Float?
   month            Int
   year             Int
-  isConfirmed      Boolean     @default(false)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  isConfirmed      Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -80,12 +80,12 @@ model MonthlyLeaderboard {
 }
 
 model NotificationLog {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  sentAt    DateTime         @default(now())
-  month     Int
-  year      Int
+  id     String           @id @default(cuid())
+  userId String
+  type   NotificationType
+  sentAt DateTime         @default(now())
+  month  Int
+  year   Int
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -95,7 +95,8 @@ model NotificationLog {
 model RefreshToken {
   id        String   @id @default(cuid())
   userId    String
-  token     String   @unique
+  // Token uzunluğu P2000 hatasını önlemek için 512 karakter yapıldı
+  token     String   @unique @db.VarChar(512)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
