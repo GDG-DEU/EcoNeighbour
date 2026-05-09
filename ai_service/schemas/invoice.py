@@ -26,6 +26,14 @@ class InvoiceParseResponse(BaseModel):
         description="Billing period in 'Month/Year' format (e.g. '03/2025'). "
         "None if not found.",
     )
+    energy_kwh: Optional[float] = Field(
+        default=None,
+        description="Energy consumed by the LLM call in kWh (from CodeCarbon).",
+    )
+    emissions_kgco2e: Optional[float] = Field(
+        default=None,
+        description="Estimated CO2 emissions from the LLM call in kgCO2e (from CodeCarbon).",
+    )
     raw_text: Optional[str] = Field(
         default=None,
         description="Raw text extracted by the model before JSON parsing "

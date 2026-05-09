@@ -107,6 +107,8 @@ async def parse_invoice(image_bytes: bytes, content_type: str) -> InvoiceParseRe
 
     tracker = EmissionsTracker(log_level="error")
     tracker.start()
+    energy_kwh: Optional[float] = None
+    emissions_kgco2e: Optional[float] = None
 
     payload = {
         "model": config.OLLAMA_MODEL,
@@ -153,6 +155,8 @@ async def parse_invoice(image_bytes: bytes, content_type: str) -> InvoiceParseRe
         tracker.stop()
         emissions_data = tracker.final_emissions_data
         if emissions_data is not None:
+            energy_kwh = emissions_data.energy_consumed
+            emissions_kgco2e = emissions_data.emissions
             logger.info(
                 "LLM energy usage: %.6f kWh, emissions: %.6f kgCO2e",
                 emissions_data.energy_consumed,
@@ -173,6 +177,8 @@ async def parse_invoice(image_bytes: bytes, content_type: str) -> InvoiceParseRe
             consumption_value=None,
             address_data=None,
             billing_period=None,
+            energy_kwh=energy_kwh,
+            emissions_kgco2e=emissions_kgco2e,
             raw_text=raw_text,
         )
 
@@ -187,5 +193,7 @@ async def parse_invoice(image_bytes: bytes, content_type: str) -> InvoiceParseRe
         consumption_value=consumption_value,
         address_data=parsed.get("address_data"),
         billing_period=parsed.get("billing_period"),
+        energy_kwh=energy_kwh,
+        emissions_kgco2e=emissions_kgco2e,
         raw_text=raw_text,
     )
