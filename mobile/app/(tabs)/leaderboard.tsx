@@ -5,6 +5,7 @@ import {
   StyleSheet,
   RefreshControl,
   ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import { EcoColors, EcoSpacing, EcoBorderRadius, EcoTypography } from '@/constan
 import { useTheme } from '@/hooks/useTheme';
 import { useAuthStore } from '@/stores/auth.store';
 import { getIndividualLeaderboard, getNeighborhoodLeaderboard } from '@/services/leaderboard.api';
+import { FadeInSlide, SkeletonGroup } from '@/animations';
 import { TabSwitcher } from '@/components/leaderboard/tab-switcher';
 import { LeaderboardList } from '@/components/leaderboard/leaderboard-list';
 
@@ -86,17 +88,26 @@ export default function LeaderboardScreen() {
       ) : (
         <View style={styles.neighborhoodList}>
           {neighborhoodQ.isLoading ? (
-            <ActivityIndicator color={EcoColors.primary} style={{ marginTop: EcoSpacing.xl }} />
+            <View style={styles.section}>
+              <SkeletonGroup lines={4} style={styles.skeleton} />
+            </View>
           ) : (neighborhoodQ.data ?? []).length === 0 ? (
             <View style={styles.empty}>
               <Ionicons name="location-outline" size={48} color={theme.muted} />
               <Text style={styles.emptyText}>Bu ay için mahalle verisi yok</Text>
             </View>
           ) : (
-            (neighborhoodQ.data ?? []).map((entry) => {
+            (neighborhoodQ.data ?? []).map((entry, index) => {
               const medal = entry.rank <= 3 ? MEDAL[entry.rank - 1] : null;
               return (
-                <View key={entry.neighborhood.id} style={styles.neighborhoodRow}>
+                <FadeInSlide
+                  key={entry.neighborhood.id}
+                  direction="right"
+                  distance={30}
+                  delay={index * 50}
+                  duration={350}
+                  style={styles.neighborhoodRow}
+                >
                   <Text style={styles.neighborhoodRank}>
                     {medal ?? `#${entry.rank}`}
                   </Text>
@@ -108,7 +119,7 @@ export default function LeaderboardScreen() {
                     <Text style={styles.neighborhoodCo2}>{entry.avgCo2Kg.toFixed(1)} kg</Text>
                     <Text style={styles.neighborhoodTrees}>🌳 {entry.totalTreesSaved.toFixed(0)}</Text>
                   </View>
-                </View>
+                </FadeInSlide>
               );
             })
           )}
