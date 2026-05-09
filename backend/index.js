@@ -4,6 +4,9 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 
+// Veritabanı bağlantısını başlat (MySQL buraya eklendi)
+require('./src/config/db');
+
 // Express uygulamasını başlat
 const app = express();
 
