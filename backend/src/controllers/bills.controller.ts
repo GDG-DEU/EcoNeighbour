@@ -158,6 +158,14 @@ export async function confirmBill(req: AuthRequest, res: Response): Promise<void
       where: { userId_type_month_year: { userId: user.id, type: billType, month, year } },
     });
 
+    // Save address to user profile on their first confirmed bill
+    if (!user.address) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { address: confirmedData.address },
+      });
+    }
+
     const bill = await prisma.bill.upsert({
       where: { userId_type_month_year: { userId: user.id, type: billType, month, year } },
       update: {
